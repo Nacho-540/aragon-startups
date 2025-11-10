@@ -91,6 +91,15 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
+**Step 4:** Configure Redirect URLs in Supabase:
+
+1. Go to **Authentication** → **URL Configuration**
+2. Set **Site URL**: `http://localhost:3000`
+3. Add **Redirect URLs**:
+   - `http://localhost:3000/auth/callback`
+
+**⚠️ IMPORTANT**: Without Step 4, password reset will not work. The callback handler automatically detects recovery flows and redirects to `/update-password`.
+
 ### 2. Create Database Schema
 
 Once Supabase is configured, you'll need to:
@@ -108,39 +117,38 @@ Once Supabase is configured, you'll need to:
 Once you have Supabase configured, test the following:
 
 ### Registration Flow
-- [ ] Navigate to `/register`
-- [ ] Register as entrepreneur
-- [ ] Register as investor
-- [ ] Verify email verification email is sent
-- [ ] Check user created in Supabase Auth
-- [ ] Verify role stored in `user_metadata`
+- [X] Navigate to `/register`
+- [X] Register as entrepreneur
+- [X] Register as investor
+- [X] Verify email verification email is sent
+- [X] Check user created in Supabase Auth
+- [X] Verify role stored in `user_metadata`
 
 ### Login Flow
-- [ ] Navigate to `/login`
-- [ ] Log in with registered account
-- [ ] Verify redirect to dashboard
-- [ ] Check session persists on page refresh
-- [ ] Verify middleware protects `/dashboard` route
-
+- [X] Navigate to `/login`
+- [X] Log in with registered account
+- [X] Verify redirect to dashboard
+- [X] Check session persists on page refresh
+- [X] Verify middleware protects `/dashboard` route
 ### Password Reset Flow
-- [ ] Click "Forgot password?" link
-- [ ] Enter email and submit
-- [ ] Check reset email received
-- [ ] Click link in email
+- [X] Click "Forgot password?" link
+- [X] Enter email and submit
+- [X] Check reset email received
+- [X] Click link in email
 - [ ] Set new password
 - [ ] Log in with new password
 
 ### Dashboard
-- [ ] Dashboard loads for logged-in users
-- [ ] Navigation links work
-- [ ] User info displays correctly
-- [ ] Logout button works
-- [ ] Role-based content displays (entrepreneur vs investor vs admin)
+- [X] Dashboard loads for logged-in users
+- [X] Navigation links work
+- [X] User info displays correctly
+- [X] Logout button works
+- [X] Role-based content displays (entrepreneur vs investor vs admin)
 
 ### Middleware Protection
-- [ ] Try accessing `/dashboard` without login → should redirect to `/login`
-- [ ] Try accessing `/admin` as non-admin → should redirect to `/dashboard`
-- [ ] Try accessing `/login` while logged in → should redirect to `/dashboard`
+- [X] Try accessing `/dashboard` without login → should redirect to `/login`
+- [X] Try accessing `/admin` as non-admin → should redirect to `/dashboard`
+- [X] Try accessing `/login` while logged in → should redirect to `/dashboard`
 
 ---
 
