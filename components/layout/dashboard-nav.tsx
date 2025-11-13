@@ -8,13 +8,13 @@ import { signOut } from '@/lib/auth/auth-helpers'
 
 interface DashboardNavProps {
   user: User
+  isApprovedOwner?: boolean
 }
 
-export function DashboardNav({ user }: DashboardNavProps) {
+export function DashboardNav({ user, isApprovedOwner = false }: DashboardNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const userRole = user.user_metadata?.role || 'entrepreneur'
-  const isOwner = userRole === 'entrepreneur' // Simplification - in real app, check if user owns a startup
 
   async function handleSignOut() {
     try {
@@ -35,7 +35,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
     {
       href: '/dashboard/my-startup',
       label: 'Mi Startup',
-      show: isOwner,
+      show: userRole === 'entrepreneur' && isApprovedOwner,
     },
     {
       href: '/dashboard/profile',
@@ -44,7 +44,12 @@ export function DashboardNav({ user }: DashboardNavProps) {
     },
     {
       href: '/admin',
-      label: 'Administración',
+      label: 'Reclamos Pendientes',
+      show: userRole === 'admin',
+    },
+    {
+      href: '/admin/users',
+      label: 'Usuarios',
       show: userRole === 'admin',
     },
   ]

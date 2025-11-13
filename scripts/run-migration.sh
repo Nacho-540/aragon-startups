@@ -1,0 +1,23 @@
+#!/bin/bash
+
+echo "🔧 Migración: Agregar columna admin_notes a submissions"
+echo ""
+echo "Este script te ayudará a ejecutar la migración."
+echo ""
+echo "OPCIONES:"
+echo ""
+echo "1. Dashboard de Supabase (RECOMENDADO)"
+echo "   - Ve a: https://supabase.com/dashboard"
+echo "   - SQL Editor > New Query"
+echo "   - Copia y ejecuta el SQL de: supabase/add-admin-notes.sql"
+echo ""
+echo "2. Ver el SQL a ejecutar:"
+cat supabase/add-admin-notes.sql
+echo ""
+echo "3. Supabase CLI (si está instalado):"
+echo "   supabase db execute < supabase/add-admin-notes.sql"
+echo ""
+echo "📝 Después de ejecutar, verifica con:"
+echo "   SELECT column_name FROM information_schema.columns"
+echo "   WHERE table_name='submissions' AND column_name='admin_notes';"
+echo ""

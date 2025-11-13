@@ -16,10 +16,23 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  // Check if user is an approved startup owner
+  let isApprovedOwner = false
+  if (user.user_metadata?.role === 'entrepreneur') {
+    const { data: ownership } = await supabase
+      .from('startup_owners')
+      .select('id, approved')
+      .eq('user_id', user.id)
+      .eq('approved', true)
+      .maybeSingle()
+
+    isApprovedOwner = !!ownership
+  }
+
   return (
     <div className="min-h-screen flex">
       {/* Sidebar */}
-      <DashboardNav user={user} />
+      <DashboardNav user={user} isApprovedOwner={isApprovedOwner} />
 
       {/* Main Content */}
       <main className="flex-1 p-8">
