@@ -1,0 +1,370 @@
+# Aragón Startups Directory - Project Context
+
+Directorio completo de startups del ecosistema de Aragón (España) con modelo freemium para inversores.
+
+## Stack Tecnológico
+
+- **Frontend:** Next.js 16 (App Router) + React 19 + TypeScript 5
+- **UI:** shadcn/ui + Tailwind CSS v4 + Radix UI
+- **Backend:** Supabase (PostgreSQL 15 + Auth + Storage + RLS)
+- **Validación:** Zod v4 + React Hook Form
+- **Deploy:** Vercel
+- **Package Manager:** pnpm
+
+## Estructura del Proyecto
+
+```
+aragon-startups/
+├── app/                          # Next.js 16 App Router
+│   ├── (public)/                 # Rutas públicas sin auth
+│   │   ├── startups/             # Directorio y detalle de startups
+│   │   └── submit/               # Formulario de envío
+│   ├── (auth)/                   # Páginas de autenticación
+│   │   ├── login/
+│   │   ├── register/
+│   │   ├── reset-password/
+│   │   └── update-password/
+│   ├── dashboard/                # Panel de usuario (auth requerido)
+│   │   └── my-startup/           # Edición de startup propia
+│   ├── admin/                    # Panel de administración (rol admin)
+│   │   ├── submissions/          # Cola de aprobación
+│   │   ├── startups/             # Gestión de startups
+│   │   ├── claims/               # Aprobación de claims
+│   │   └── users/                # Gestión de usuarios
+│   └── api/                      # Endpoints API REST
+├── components/
+│   ├── ui/                       # shadcn/ui components
+│   ├── startups/                 # Componentes de startups
+│   ├── admin/                    # Componentes admin
+│   ├── submissions/              # Componentes de envíos
+│   └── layout/                   # Layouts y navegación
+├── lib/
+│   ├── supabase/                 # Clientes Supabase (client/server)
+│   ├── auth/                     # Context y helpers de auth
+│   ├── api/                      # Funciones API reutilizables
+│   ├── validations/              # Schemas Zod
+│   └── utils.ts                  # Utilidades generales
+└── types/                        # TypeScript type definitions
+
+**Nota:** El directorio `types/` está pendiente de crear.
+```
+
+## Reglas de Desarrollo
+
+### 1. Arquitectura y Patrones
+
+**Server vs Client Components:**
+- Usar Server Components por defecto (Next.js 16)
+- Client Components solo con `'use client'` cuando necesario:
+  - Hooks de React (useState, useEffect, etc.)
+  - Event handlers (onClick, onChange)
+  - Context consumers
+  - Bibliotecas que requieren browser APIs
+
+**Data Fetching:**
+- Server Components: Fetch directo con `async/await`
+- Paralelizar con `Promise.all()` cuando sea posible
+- Client Components: React Query o SWR si necesario (no implementado aún)
+
+**Routing:**
+- App Router con route groups: `(public)`, `(auth)`, etc.
+- Layouts para compartir UI entre rutas relacionadas
+- Loading states con `loading.tsx`
+- Error handling con `error.tsx`
+
+### 2. Supabase y Base de Datos
+
+**Clientes:**
+```typescript
+// Server Components y API Routes
+import { createClient } from '@/lib/supabase/server'
+const supabase = await createClient()
+
+// Client Components
+import { createClient } from '@/lib/supabase/client'
+const supabase = createClient()
+
+// Operaciones admin (service role)
+import { createServiceClient } from '@/lib/supabase/server'
+const supabase = createServiceClient()
+```
+
+**Seguridad:**
+- **CRÍTICO:** Row Level Security (RLS) debe estar SIEMPRE habilitado
+- Nunca usar service role client en frontend
+- Validar permisos en server antes de operaciones sensibles
+- Verificar rol de usuario para admin/owner operations
+
+**Schema Principal:**
+```sql
+-- Tablas core
+startups              # Información pública y premium de startups
+startup_owners        # Relación user-startup (ownership)
+submissions           # Envíos pendientes de aprobación
+
+-- Storage buckets
+startup-logos         # Públicos (max 2MB, PNG/JPG/WebP)
+pitch-decks           # Privados (max 10MB, PDF)
+```
+
+### 3. Autenticación y Autorización
+
+**Roles de Usuario:**
+- `public` - No autenticado (solo lectura pública)
+- `entrepreneur` - Usuario registrado (claim startups)
+- `investor` - Premium (acceso a datos premium)
+- `startup_owner` - Dueño de startup (edición)
+- `admin` - Administrador (control total)
+
+**Flujo de Auth:**
+```typescript
+// Obtener usuario actual
+const { user, loading, getUserRole } = useAuth()
+
+// Proteger rutas
+if (!user) redirect('/login')
+if (getUserRole() !== 'admin') redirect('/dashboard')
+
+// Verificar ownership
+const isOwner = await checkStartupOwnership(userId, startupId)
+```
+
+**Control de Acceso:**
+- Layouts verifican auth/rol antes de renderizar
+- API routes validan permisos server-side
+- RLS policies como última línea de defensa
+
+### 4. Gestión de Estado
+
+**Auth Context:**
+```typescript
+// Ya implementado en lib/auth/auth-context.tsx
+const { user, loading, signOut, getUserRole } = useAuth()
+```
+
+**Server State:**
+- Preferir Server Components con fetch directo
+- Client state solo para interacciones UI
+- Considerar React Query/SWR para casos complejos (futuro)
+
+**Form State:**
+```typescript
+// React Hook Form + Zod
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { startupSchema } from '@/lib/validations/submission'
+
+const form = useForm({
+  resolver: zodResolver(startupSchema)
+})
+```
+
+### 5. Convenciones de Código
+
+**TypeScript:**
+- Strict mode habilitado
+- Interfaces para props y tipos públicos
+- Type aliases para uniones y tipos internos
+- Evitar `any`, usar `unknown` si necesario
+
+**Naming:**
+- Components: `PascalCase` (StartupCard.tsx)
+- Functions: `camelCase` (getFeaturedStartups)
+- Constants: `UPPER_SNAKE_CASE` (MAX_FILE_SIZE)
+- Tipos: `PascalCase` (StartupData, UserRole)
+
+**Imports:**
+```typescript
+// Orden: React, Next, external, internal, relative
+import { useState } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import './styles.css'
+```
+
+**Componentes:**
+```typescript
+// Props interface
+interface StartupCardProps {
+  startup: Startup
+  showActions?: boolean
+}
+
+// Export default para page/layout components
+export default function StartupCard({ startup, showActions = false }: StartupCardProps) {
+  return <div>...</div>
+}
+```
+
+### 6. Validación y Errores
+
+**Schemas Zod:**
+```typescript
+// Definir en lib/validations/
+export const startupSchema = z.object({
+  nombre: z.string().min(2).max(100),
+  email: z.string().email(),
+  // ...
+})
+
+// Reutilizar en forms y API
+const validatedData = startupSchema.parse(formData)
+```
+
+**Manejo de Errores:**
+```typescript
+// API Routes - Retornar JSON con status codes
+return NextResponse.json(
+  { error: 'Startup no encontrada' },
+  { status: 404 }
+)
+
+// Components - Mostrar mensajes user-friendly
+try {
+  await submitStartup(data)
+  toast.success('Startup enviada correctamente')
+} catch (error) {
+  toast.error('Error al enviar startup')
+  console.error(error)
+}
+```
+
+### 7. Archivos y Storage
+
+**Upload a Supabase Storage:**
+```typescript
+// Validar tipo y tamaño ANTES de upload
+const allowedTypes = ['image/png', 'image/jpeg', 'image/webp']
+const maxSize = 2 * 1024 * 1024 // 2MB
+
+// Usar nombres únicos
+const fileName = `${Date.now()}_${file.name}`
+const { data, error } = await supabase.storage
+  .from('startup-logos')
+  .upload(fileName, file)
+```
+
+**URLs de Storage:**
+- Logos (public): `getPublicUrl()`
+- Pitch decks (private): `createSignedUrl()` solo para investors
+
+### 8. Seguridad y Validación
+
+**Reglas de Oro:**
+1. **Nunca confiar en client-side validation** - Siempre validar server-side
+2. **Verificar permisos en cada API route** - No asumir que el frontend protege
+3. **Sanitizar inputs** - Zod schemas para todos los inputs
+4. **Rate limiting** - Implementar para API routes (pendiente)
+5. **Environment vars** - Nunca commitear `.env.local`
+
+**Checklist de Seguridad:**
+- [ ] Input validation con Zod schemas
+- [ ] RLS policies activas en todas las tablas
+- [ ] Service role key solo server-side
+- [ ] File upload: tipo y tamaño validados
+- [ ] Auth verificado en protected routes
+- [ ] SQL injection prevención (Supabase lo maneja)
+
+### 9. Performance
+
+**Optimizaciones Implementadas:**
+- Next.js Image component para logos
+- Parallel data fetching con Promise.all()
+- Server Components para reducir JS bundle
+- Tailwind CSS v4 con optimizaciones
+
+**Pendientes:**
+- [ ] Lazy loading de componentes pesados
+- [ ] Database indexes verificados
+- [ ] Image optimization (WebP)
+- [ ] Bundle size analysis
+- [ ] Lighthouse audit (target: Performance > 85)
+
+### 10. Testing (Pendiente)
+
+**Framework Recomendado:** Vitest + React Testing Library
+
+**Prioridades de Testing:**
+1. Utils y helpers (lib/)
+2. Zod schemas (validations/)
+3. API routes (critical paths)
+4. Componentes críticos (forms, auth)
+5. E2E con Playwright (user flows)
+
+## Variables de Entorno
+
+```bash
+# .env.local (NO commitear)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
+SUPABASE_SERVICE_ROLE_KEY=eyJxxx...
+NEXT_PUBLIC_SITE_URL=http://localhost:3000  # o URL producción
+```
+
+## Comandos Útiles
+
+```bash
+# Desarrollo
+pnpm dev                    # Servidor dev en :3000
+
+# Build y producción
+pnpm build                  # Build optimizado
+pnpm start                  # Servidor producción
+
+# Calidad de código
+pnpm lint                   # ESLint
+
+# Base de datos
+# Ejecutar SQL en Supabase dashboard (docs/SUPABASE_SETUP.sql)
+```
+
+## Estado del Proyecto
+
+**Completado (Fases 0-3):**
+- ✅ Setup inicial y configuración
+- ✅ Sistema de autenticación completo
+- ✅ Panel de administración funcional
+- ✅ Formulario de envío con file uploads
+- ✅ Directorio público de startups
+- ✅ Sistema de claims y ownership
+
+**En Progreso (Fase 4):**
+- 🟡 Acceso premium para investors (verificar implementación)
+- 🟡 Homepage funcional (existe pero verificar integración)
+
+**Pendiente (Fase 5):**
+- ❌ Testing automatizado
+- ❌ Definiciones de tipos centralizadas (types/)
+- ❌ SEO optimization
+- ❌ Audit de accesibilidad
+- ❌ Performance tuning
+- ❌ Deploy a producción
+
+## Issues Conocidos
+
+1. **TypeScript Types:** No existe directorio `types/` - crear y centralizar definiciones
+2. **React 19 RC:** Versión release candidate - verificar estabilidad para producción
+3. **Zod v4 Beta:** Puede tener breaking changes - monitorear updates
+4. **Testing:** Sin infraestructura de testing - prioridad alta
+5. **Error Handling:** Mejorar error boundaries y user feedback
+
+## Documentación Adicional
+
+- **PRD:** [docs/PRD.md](../docs/PRD.md) - Requisitos de producto completos
+- **Technical Spec:** [docs/TECHNICAL_SPEC.md](../docs/TECHNICAL_SPEC.md) - Arquitectura detallada
+- **Database Schema:** [docs/DATABASE_SCHEMA.md](../docs/DATABASE_SCHEMA.md) - Esquema completo
+- **User Flows:** [docs/USER_FLOWS.md](../docs/USER_FLOWS.md) - Flujos de usuario
+- **Roadmap:** [docs/IMPLEMENTATION_ROADMAP.md](../docs/IMPLEMENTATION_ROADMAP.md) - Plan de implementación
+
+## Contacto y Soporte
+
+- **Supabase Dashboard:** [https://supabase.com/dashboard](https://supabase.com/dashboard)
+- **Vercel Dashboard:** [https://vercel.com/dashboard](https://vercel.com/dashboard)
+- **Next.js Docs:** [https://nextjs.org/docs](https://nextjs.org/docs)
+- **Supabase Docs:** [https://supabase.com/docs](https://supabase.com/docs)
+
+---
+
+**Última actualización:** 2025-11-13
+**Versión del proyecto:** v0.1.0 (MVP en desarrollo)
